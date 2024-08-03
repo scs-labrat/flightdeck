@@ -3,38 +3,21 @@
 const WebSocket = require('ws');
 const { EventEmitter } = require('events');
 
-// Enum for Aircraft Systems
-const AircraftSystem = Object.freeze({
-  FMS: 'FMS',
-  EFIS: 'EFIS',
-  EICAS: 'EICAS',
-  TCAS: 'TCAS',
-  WEATHER_RADAR: 'Weather Radar',
-  ILS: 'ILS',
-  VHF_COMMS: 'VHF Comms',
-  HF_COMMS: 'HF Comms',
-  SATCOM: 'SATCOM',
-  ACARS: 'ACARS',
-  ADS_B: 'ADS-B',
-  TRANSPONDER: 'Transponder',
-  EGPWS: 'EGPWS'
-});
-
-// Define ports for each system
+// Simulated aircraft systems with assigned ports
 const systems = {
-  [AircraftSystem.FMS]: 10000,
-  [AircraftSystem.EFIS]: 10001,
-  [AircraftSystem.EICAS]: 10002,
-  [AircraftSystem.TCAS]: 10003,
-  [AircraftSystem.WEATHER_RADAR]: 10004,
-  [AircraftSystem.ILS]: 10005,
-  [AircraftSystem.VHF_COMMS]: 10006,
-  [AircraftSystem.HF_COMMS]: 10007,
-  [AircraftSystem.SATCOM]: 10008,
-  [AircraftSystem.ACARS]: 10009,
-  [AircraftSystem.ADS_B]: 10010,
-  [AircraftSystem.TRANSPONDER]: 10011,
-  [AircraftSystem.EGPWS]: 10012
+  FMS: 10000,
+  EFIS: 10001,
+  EICAS: 10002,
+  TCAS: 10003,
+  'Weather Radar': 10004,
+  ILS: 10005,
+  'VHF Comms': 10006,
+  'HF Comms': 10007,
+  SATCOM: 10008,
+  ACARS: 10009,
+  'ADS-B': 10010,
+  Transponder: 10011,
+  EGPWS: 10012
 };
 
 // Create WebSocket servers for each system
@@ -50,11 +33,6 @@ const nearbyAircraft = [];
 // Event emitter for inter-system communication
 const systemBus = new EventEmitter();
 
-// Utility function to generate a random number within a range
-function getRandomNumber(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
 // Generate realistic flight data for nearby aircraft
 function initializeNearbyAircraft() {
   const airlines = ['DAL', 'UAL', 'AAL', 'SWA', 'JBU', 'FDX', 'UPS'];
@@ -63,13 +41,13 @@ function initializeNearbyAircraft() {
       callsign: `${airlines[Math.floor(Math.random() * airlines.length)]}${1000 + Math.floor(Math.random() * 9000)}`,
       type: ['B737', 'A320', 'E175', 'CRJ9', 'B787', 'A350'][Math.floor(Math.random() * 6)],
       position: {
-        latitude: getRandomNumber(39, 41),
-        longitude: getRandomNumber(-75, -73)
+        latitude: 40 + (Math.random() - 0.5) * 2,
+        longitude: -74 + (Math.random() - 0.5) * 2
       },
-      altitude: Math.floor(getRandomNumber(20000, 40000)),
-      speed: Math.floor(getRandomNumber(400, 500)),
-      heading: Math.floor(getRandomNumber(0, 360)),
-      verticalSpeed: Math.floor(getRandomNumber(-1000, 1000))
+      altitude: Math.floor(Math.random() * 20000 + 20000),
+      speed: Math.floor(Math.random() * 100 + 400),
+      heading: Math.floor(Math.random() * 360),
+      verticalSpeed: Math.floor(Math.random() * 2000 - 1000)
     });
   }
 }
@@ -86,10 +64,10 @@ function updateNearbyAircraft() {
     
     // Randomly change heading and vertical speed occasionally
     if (Math.random() < 0.05) {
-      aircraft.heading = (aircraft.heading + Math.floor(getRandomNumber(-10, 10)) + 360) % 360;
+      aircraft.heading = (aircraft.heading + Math.floor(Math.random() * 20 - 10) + 360) % 360;
     }
     if (Math.random() < 0.05) {
-      aircraft.verticalSpeed = Math.floor(getRandomNumber(-2000, 2000));
+      aircraft.verticalSpeed = Math.floor(Math.random() * 4000 - 2000);
     }
   });
 }
@@ -97,86 +75,86 @@ function updateNearbyAircraft() {
 // Generate system-specific data
 function generateSystemData(system) {
   switch (system) {
-    case AircraftSystem.FMS:
+    case 'FMS':
       return {
         flightPlan: {
           origin: 'KJFK',
           destination: 'KLAX',
           waypoints: ['GREKI', 'ALCOV', 'MAJIC', 'KARRS']
         },
-        estimatedFuelRemaining: Math.floor(getRandomNumber(15000, 25000))
+        estimatedFuelRemaining: Math.floor(Math.random() * 10000 + 15000)
       };
-    case AircraftSystem.EFIS:
+    case 'EFIS':
       return {
         attitudeIndicator: {
-          pitch: getRandomNumber(-5, 5),
-          roll: getRandomNumber(-10, 10)
+          pitch: (Math.random() - 0.5) * 10,
+          roll: (Math.random() - 0.5) * 20
         },
-        altimeter: Math.floor(getRandomNumber(30000, 35000)),
-        airspeed: Math.floor(getRandomNumber(450, 500))
+        altimeter: Math.floor(Math.random() * 5000 + 30000),
+        airspeed: Math.floor(Math.random() * 50 + 450)
       };
-    case AircraftSystem.EICAS:
+    case 'EICAS':
       return {
         engineParameters: {
-          n1: Math.floor(getRandomNumber(90, 100)),
-          egt: Math.floor(getRandomNumber(700, 800)),
-          fuelFlow: Math.floor(getRandomNumber(3000, 4000))
+          n1: Math.floor(Math.random() * 10 + 90),
+          egt: Math.floor(Math.random() * 100 + 700),
+          fuelFlow: Math.floor(Math.random() * 1000 + 3000)
         },
-        hydraulicPressure: Math.floor(getRandomNumber(2500, 3000))
+        hydraulicPressure: Math.floor(Math.random() * 500 + 2500)
       };
-    case AircraftSystem.TCAS:
+    case 'TCAS':
       return {
         nearbyAircraft: nearbyAircraft.map(aircraft => ({
           callsign: aircraft.callsign,
           relativeAltitude: aircraft.altitude - 35000,
-          range: Math.floor(getRandomNumber(5, 15))
+          range: Math.floor(Math.random() * 10 + 5)
         }))
       };
-    case AircraftSystem.WEATHER_RADAR:
+    case 'Weather Radar':
       return {
         weatherCells: Array(3).fill().map(() => ({
           intensity: ['Light', 'Moderate', 'Severe'][Math.floor(Math.random() * 3)],
-          bearing: Math.floor(getRandomNumber(0, 360)),
-          distance: Math.floor(getRandomNumber(10, 60))
+          bearing: Math.floor(Math.random() * 360),
+          distance: Math.floor(Math.random() * 50 + 10)
         }))
       };
-    case AircraftSystem.ILS:
+    case 'ILS':
       return {
-        localizer: getRandomNumber(-1, 1),
-        glideslope: getRandomNumber(-1, 1),
+        localizer: (Math.random() - 0.5) * 2,
+        glideslope: (Math.random() - 0.5) * 2,
         outerMarker: Math.random() < 0.1
       };
-    case AircraftSystem.VHF_COMMS:
+    case 'VHF Comms':
       return {
-        activeFrequency: getRandomNumber(118, 136).toFixed(3),
-        signalStrength: Math.floor(getRandomNumber(1, 6))
+        activeFrequency: (118 + Math.random() * 18).toFixed(3),
+        signalStrength: Math.floor(Math.random() * 5 + 1)
       };
-    case AircraftSystem.HF_COMMS:
+    case 'HF Comms':
       return {
-        activeFrequency: getRandomNumber(2, 30).toFixed(3),
+        activeFrequency: (2 + Math.random() * 28).toFixed(3),
         signalQuality: ['Poor', 'Fair', 'Good', 'Excellent'][Math.floor(Math.random() * 4)]
       };
-    case AircraftSystem.SATCOM:
+    case 'SATCOM':
       return {
         connectionStatus: Math.random() < 0.9 ? 'Connected' : 'Searching',
-        signalStrength: Math.floor(getRandomNumber(0, 100))
+        signalStrength: Math.floor(Math.random() * 100)
       };
-    case AircraftSystem.ACARS:
+    case 'ACARS':
       return {
         messages: [
           { type: 'OOOI', event: 'Out', time: new Date().toISOString() },
           { type: 'Weather', request: 'METAR KLAX' }
         ]
       };
-    case AircraftSystem.ADS_B:
+    case 'ADS-B':
       return {
         ownship: {
           position: {
-            latitude: getRandomNumber(40.5913111, 40.6913111),
-            longitude: getRandomNumber(-73.8281391, -73.7281391)
+            latitude: 40.6413111 + (Math.random() - 0.5) * 0.1,
+            longitude: -73.7781391 + (Math.random() - 0.5) * 0.1
           },
-          altitude: Math.floor(getRandomNumber(30000, 35000)),
-          speed: Math.floor(getRandomNumber(450, 500))
+          altitude: Math.floor(Math.random() * 5000 + 30000),
+          speed: Math.floor(Math.random() * 50 + 450)
         },
         traffic: nearbyAircraft.slice(0, 5).map(aircraft => ({
           icao: 'A' + Math.floor(Math.random() * 16777215).toString(16).toUpperCase().padStart(6, '0'),
@@ -185,16 +163,16 @@ function generateSystemData(system) {
           speed: aircraft.speed
         }))
       };
-    case AircraftSystem.TRANSPONDER:
+    case 'Transponder':
       return {
         mode: 'Mode S',
         code: Math.floor(Math.random() * 7777).toString().padStart(4, '0'),
         ident: Math.random() < 0.05
       };
-    case AircraftSystem.EGPWS:
+    case 'EGPWS':
       return {
         terrainAhead: Math.random() < 0.05,
-        minimumTerrainClearance: Math.floor(getRandomNumber(500, 1500)),
+        minimumTerrainClearance: Math.floor(Math.random() * 1000 + 500),
         warnings: Math.random() < 0.02 ? ['TERRAIN AHEAD, PULL UP'] : []
       };
     default:
@@ -202,7 +180,6 @@ function generateSystemData(system) {
   }
 }
 
-// Broadcast data for a specific system
 function broadcastSystemData(system) {
   const data = {
     timestamp: new Date().toISOString(),
@@ -222,7 +199,6 @@ function broadcastSystemData(system) {
   console.log(`${system} data sent:`, JSON.stringify(data));
 }
 
-// Start the flight deck network simulation
 function startFlightdeckNetworkSimulation() {
   initializeNearbyAircraft();
   
@@ -235,14 +211,14 @@ function startFlightdeckNetworkSimulation() {
 
 // Inter-system communication examples
 systemBus.on('data', (data) => {
-  if (data.system === AircraftSystem.TCAS && data.data.nearbyAircraft.some(ac => ac.relativeAltitude < 1000 && ac.range < 5)) {
+  if (data.system === 'TCAS' && data.data.nearbyAircraft.some(ac => ac.relativeAltitude < 1000 && ac.range < 5)) {
     console.log('TCAS RA event triggered');
-    broadcastSystemData(AircraftSystem.EFIS); // Trigger EFIS update for TCAS display
+    broadcastSystemData('EFIS'); // Trigger EFIS update for TCAS display
   }
   
-  if (data.system === AircraftSystem.EGPWS && data.data.warnings.length > 0) {
+  if (data.system === 'EGPWS' && data.data.warnings.length > 0) {
     console.log('EGPWS Warning event triggered');
-    broadcastSystemData(AircraftSystem.EICAS); // Trigger EICAS update for warning display
+    broadcastSystemData('EICAS'); // Trigger EICAS update for warning display
   }
 });
 
@@ -250,3 +226,8 @@ systemBus.on('data', (data) => {
 console.log('Starting Advanced Flightdeck Network Simulation');
 startFlightdeckNetworkSimulation();
 
+// Example client connection (for testing purposes)
+// const exampleClientConnection = new WebSocket('ws://localhost:10000');
+// exampleClientConnection.on('message', (data) => {
+//   console.log('Received FMS data:', JSON.parse(data));
+// });

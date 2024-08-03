@@ -1,7 +1,8 @@
-// Flightdeck Console Simulation
+// Flightdeck Console Simulation with Graphical Elements and Real-Time Monitoring
 
 const WebSocket = require('ws');
-const readline = require('readline');
+const blessed = require('blessed');
+const contrib = require('blessed-contrib');
 
 // ANSI escape codes for colors
 const colors = {
@@ -54,6 +55,85 @@ const systems = {
 // WebSocket connections
 const connections = {};
 
+// Create a screen object
+const screen = blessed.screen({
+  smartCSR: true,
+  title: 'Flightdeck Console Simulation'
+});
+
+// Create a grid layout
+const grid = new contrib.grid({
+  rows: 12,
+  cols: 12,
+  screen: screen
+});
+
+// Define tables and line charts for different systems
+const fmsTable = grid.set(0, 0, 4, 4, contrib.table, {
+  keys: true,
+  label: 'FMS Data',
+  columnWidth: [15, 40]
+});
+
+const efisTable = grid.set(0, 4, 4, 4, contrib.table, {
+  keys: true,
+  label: 'EFIS Data',
+  columnWidth: [15, 15, 15]
+});
+
+const eicasTable = grid.set(0, 8, 4, 4, contrib.table, {
+  keys: true,
+  label: 'EICAS Data',
+  columnWidth: [15, 15, 15]
+});
+
+const tcasTable = grid.set(4, 0, 4, 6, contrib.table, {
+  keys: true,
+  label: 'TCAS Data',
+  columnWidth: [15, 20, 10]
+});
+
+const weatherRadarTable = grid.set(4, 6, 4, 6, contrib.table, {
+  keys: true,
+  label: 'Weather Radar Data',
+  columnWidth: [15, 15, 15]
+});
+
+const adsbTable = grid.set(8, 0, 4, 8, contrib.table, {
+  keys: true,
+  label: 'ADS-B Data',
+  columnWidth: [20, 20, 20]
+});
+
+const egpwsTable = grid.set(8, 8, 4, 4, contrib.table, {
+  keys: true,
+  label: 'EGPWS Data',
+  columnWidth: [20, 20]
+});
+
+const altitudeChart = grid.set(8, 8, 4, 4, contrib.line, {
+  style: { line: 'yellow', text: 'green', baseline: 'black' },
+  label: 'Altitude (ft)',
+  showLegend: true
+});
+
+const speedChart = grid.set(4, 0, 4, 6, contrib.line, {
+  style: { line: 'red', text: 'green', baseline: 'black' },
+  label: 'Speed (knots)',
+  showLegend: true
+});
+
+const fuelChart = grid.set(4, 6, 4, 6, contrib.line, {
+  style: { line: 'blue', text: 'green', baseline: 'black' },
+  label: 'Fuel (kg)',
+  showLegend: true
+});
+
+// Data arrays for charts
+let altitudeData = Array(30).fill(0);
+let speedData = Array(30).fill(0);
+let fuelData = Array(30).fill(0);
+
 // Connect to all system WebSockets
 Object.entries(systems).forEach(([system, port]) => {
   connections[system] = new WebSocket(`ws://localhost:${port}`);
@@ -75,150 +155,145 @@ Object.entries(systems).forEach(([system, port]) => {
 function handleSystemData(system, data) {
   switch (system) {
     case 'FMS':
-      displayFMSData(data.data);
+      updateFMSTable(data.data);
+      updateFuelChart(data.data.estimatedFuelRemaining);
       break;
     case 'EFIS':
-      displayEFISData(data.data);
+      updateEFISTable(data.data);
+      updateAltitudeChart(data.data.altimeter);
+      updateSpeedChart(data.data.airspeed);
       break;
     case 'EICAS':
-      displayEICASData(data.data);
+      updateEICASTable(data.data);
       break;
     case 'TCAS':
-      displayTCASData(data.data);
+      updateTCASTable(data.data);
       break;
     case 'Weather Radar':
-      displayWeatherRadarData(data.data);
+      updateWeatherRadarTable(data.data);
       break;
     case 'ADS-B':
-      displayADSBData(data.data);
+      updateADS-BTable(data.data);
       break;
     case 'EGPWS':
-      displayEGPWSData(data.data);
+      updateEGPWSTable(data.data);
       break;
     default:
       console.log(`${colors.fg.yellow}${system} data:${colors.reset}`, data);
   }
 }
 
-function displayFMSData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}FMS Data:${colors.reset}
-  Flight Plan: ${data.flightPlan.origin} → ${data.flightPlan.destination}
-  Waypoints: ${data.flightPlan.waypoints.join(' → ')}
-  Est. Fuel Remaining: ${data.estimatedFuelRemaining} kg
-  `);
-}
-
-function displayEFISData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}EFIS Data:${colors.reset}
-  Attitude: Pitch ${data.attitudeIndicator.pitch.toFixed(1)}°, Roll ${data.attitudeIndicator.roll.toFixed(1)}°
-  Altitude: ${data.altimeter} ft
-  Airspeed: ${data.airspeed} knots
-  `);
-}
-
-function displayEICASData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}EICAS Data:${colors.reset}
-  Engine: N1 ${data.engineParameters.n1}%, EGT ${data.engineParameters.egt}°C
-  Fuel Flow: ${data.engineParameters.fuelFlow} kg/h
-  Hydraulic Pressure: ${data.hydraulicPressure} psi
-  `);
-}
-
-function displayTCASData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}TCAS Data:${colors.reset}
-  Nearby Aircraft:`);
-  data.nearbyAircraft.forEach(ac => {
-    console.log(`  ${ac.callsign}: ${ac.relativeAltitude > 0 ? '+' : ''}${ac.relativeAltitude} ft, ${ac.range} nm`);
+function updateFMSTable(data) {
+  fmsTable.setData({
+    headers: ['Key', 'Value'],
+    data: [
+      ['Flight Plan', `${data.flightPlan.origin} → ${data.flightPlan.destination}`],
+      ['Waypoints', data.flightPlan.waypoints.join(' → ')],
+      ['Fuel Remaining', `${data.estimatedFuelRemaining} kg`]
+    ]
   });
+  screen.render();
 }
 
-function displayWeatherRadarData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}Weather Radar:${colors.reset}
-  Weather Cells:`);
-  data.weatherCells.forEach(cell => {
-    console.log(`  ${cell.intensity} at ${cell.bearing}°, ${cell.distance} nm`);
+function updateEFISTable(data) {
+  efisTable.setData({
+    headers: ['Key', 'Pitch', 'Roll'],
+    data: [
+      ['Attitude', `${data.attitudeIndicator.pitch.toFixed(1)}°`, `${data.attitudeIndicator.roll.toFixed(1)}°`],
+      ['Altitude', `${data.altimeter} ft`, ''],
+      ['Airspeed', `${data.airspeed} knots`, '']
+    ]
   });
+  screen.render();
 }
 
-function displayADSBData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}ADS-B Data:${colors.reset}
-  Ownship: ${data.ownship.position.latitude.toFixed(4)}°, ${data.ownship.position.longitude.toFixed(4)}°
-           Alt: ${data.ownship.altitude} ft, Speed: ${data.ownship.speed} knots
-  Nearby Traffic:`);
-  data.traffic.forEach(ac => {
-    console.log(`  ${ac.icao}: ${ac.position.latitude.toFixed(4)}°, ${ac.position.longitude.toFixed(4)}°`);
-    console.log(`           Alt: ${ac.altitude} ft, Speed: ${ac.speed} knots`);
+function updateEICASTable(data) {
+  eicasTable.setData({
+    headers: ['Key', 'Value', 'Unit'],
+    data: [
+      ['N1', `${data.engineParameters.n1}%`, ''],
+      ['EGT', `${data.engineParameters.egt}°C`, ''],
+      ['Fuel Flow', `${data.engineParameters.fuelFlow} kg/h`, ''],
+      ['Hydraulic Pressure', `${data.hydraulicPressure} psi`, '']
+    ]
   });
+  screen.render();
 }
 
-function displayEGPWSData(data) {
-  console.log(`
-${colors.fg.cyan}${colors.bright}EGPWS Data:${colors.reset}
-  Terrain Ahead: ${data.terrainAhead ? colors.fg.red + 'WARNING' + colors.reset : 'Clear'}
-  Minimum Terrain Clearance: ${data.minimumTerrainClearance} ft
-  Warnings: ${data.warnings.length > 0 ? colors.fg.red + data.warnings.join(', ') + colors.reset : 'None'}
-  `);
+function updateTCASTable(data) {
+  tcasTable.setData({
+    headers: ['Callsign', 'Relative Altitude', 'Range (nm)'],
+    data: data.nearbyAircraft.map(ac => [
+      ac.callsign,
+      `${ac.relativeAltitude > 0 ? '+' : ''}${ac.relativeAltitude} ft`,
+      ac.range
+    ])
+  });
+  screen.render();
 }
 
-// Set up readline interface for user input
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+function updateWeatherRadarTable(data) {
+  weatherRadarTable.setData({
+    headers: ['Intensity', 'Bearing', 'Distance (nm)'],
+    data: data.weatherCells.map(cell => [
+      cell.intensity,
+      `${cell.bearing}°`,
+      cell.distance
+    ])
+  });
+  screen.render();
+}
+
+function updateADS-BTable(data) {
+  adsbTable.setData({
+    headers: ['ICAO', 'Position', 'Altitude', 'Speed'],
+    data: data.traffic.map(ac => [
+      ac.icao,
+      `${ac.position.latitude.toFixed(4)}°, ${ac.position.longitude.toFixed(4)}°`,
+      `${ac.altitude} ft`,
+      `${ac.speed} knots`
+    ])
+  });
+  screen.render();
+}
+
+function updateEGPWSTable(data) {
+  egpwsTable.setData({
+    headers: ['Key', 'Value'],
+    data: [
+      ['Terrain Ahead', data.terrainAhead ? 'WARNING' : 'Clear'],
+      ['Min Terrain Clearance', `${data.minimumTerrainClearance} ft`],
+      ['Warnings', data.warnings.join(', ')]
+    ]
+  });
+  screen.render();
+}
+
+function updateAltitudeChart(altitude) {
+  altitudeData.shift();
+  altitudeData.push(altitude);
+  altitudeChart.setData([{ title: 'Altitude', x: Array(30).fill('').map((_, i) => i.toString()), y: altitudeData }]);
+  screen.render();
+}
+
+function updateSpeedChart(speed) {
+  speedData.shift();
+  speedData.push(speed);
+  speedChart.setData([{ title: 'Speed', x: Array(30).fill('').map((_, i) => i.toString()), y: speedData }]);
+  screen.render();
+}
+
+function updateFuelChart(fuel) {
+  fuelData.shift();
+  fuelData.push(fuel);
+  fuelChart.setData([{ title: 'Fuel', x: Array(30).fill('').map((_, i) => i.toString()), y: fuelData }]);
+  screen.render();
+}
+
+// Quit on 'q' or Ctrl+C
+screen.key(['q', 'C-c'], function() {
+  return process.exit(0);
 });
 
-function displayMenu() {
-  console.log(`
-${colors.fg.yellow}${colors.bright}Flightdeck Console Menu:${colors.reset}
-  1. Display FMS Data
-  2. Display EFIS Data
-  3. Display EICAS Data
-  4. Display TCAS Data
-  5. Display Weather Radar
-  6. Display ADS-B Data
-  7. Display EGPWS Data
-  8. Exit
-  `);
-  rl.question('Enter your choice: ', handleUserInput);
-}
-
-function handleUserInput(choice) {
-  switch (choice) {
-    case '1':
-      connections.FMS.send('request');
-      break;
-    case '2':
-      connections.EFIS.send('request');
-      break;
-    case '3':
-      connections.EICAS.send('request');
-      break;
-    case '4':
-      connections.TCAS.send('request');
-      break;
-    case '5':
-      connections['Weather Radar'].send('request');
-      break;
-    case '6':
-      connections['ADS-B'].send('request');
-      break;
-    case '7':
-      connections.EGPWS.send('request');
-      break;
-    case '8':
-      console.log('Exiting Flightdeck Console Simulation.');
-      rl.close();
-      process.exit(0);
-    default:
-      console.log('Invalid choice. Please try again.');
-  }
-  setTimeout(displayMenu, 1000);
-}
-
 console.log(`${colors.fg.green}${colors.bright}Starting Flightdeck Console Simulation...${colors.reset}`);
-setTimeout(displayMenu, 2000);  // Give time for WebSocket connections to establish
+screen.render();
