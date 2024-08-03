@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSim.ai Advanced Flight Deck Simulator</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            height: 100%;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .cockpit {
+            flex: 3;
+            background-color: #121212;
+            position: relative;
+            overflow: hidden;
+            border-right: 2px solid #333;
+        }
+        .panels {
+            flex: 1;
+            background-color: #1e1e1e;
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.5);
+        }
+        .panel {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .panel h3 {
+            margin-top: 0;
+            color: #4fc3f7;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        button {
+            background: linear-gradient(145deg, #056db3, #039be5);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 3px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s, box-shadow 0.2s;
+            font-size: 13px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:hover {
+            background: linear-gradient(145deg, #039be5, #056db3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.4);
+        }
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+        }
+        #cockpit-view {
+            width: 100%;
+            height: 70%;
+            background-color: #000;
+            position: relative;
+        }
+        #traffic-display {
+            width: 100%;
+            height: 30%;
+            background-color: #00264d;
+            position: relative;
+            border-top: 2px solid #0277bd;
+        }
+        .aircraft {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #4fc3f7;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+        }
+        #network-traffic, #ads-b-out, #ads-b-in {
+            height: 150px;
+            overflow-y: scroll;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background-color: #000;
+            color: #4fc3f7;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 3px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .instrument {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            border-radius: 6px;
+            border: 1px solid #4fc3f7;
+            box-shadow: 0 0 15px rgba(79,195,247,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Digital-7', monospace;
+            color: #4fc3f7;
+            padding: 10px;
+        }
+        .instrument-label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-shadow: 0 0 3px rgba(79,195,247,0.8);
+        }
+        .instrument-value {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(79,195,247,1);
+        }
+        #airspeed { top: 20px; left: 20px; }
+        #altitude { top: 20px; right: 20px; }
+        #heading { bottom: 20px; left: 20px; }
+        #vertical-speed { bottom: 20px; right: 20px; }
+        #artificial-horizon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #4fc3f7 50%, #795548 50%);
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+        }
+        #horizon-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: white;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 5px white;
+        }
+        #weather-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="cockpit">
+            <div id="cockpit-view">
+                <div id="artificial-horizon">
+                    <div id="horizon-line"></div>
+                </div>
+                <div id="weather-overlay"></div>
+                <div id="airspeed" class="instrument">
+                    <div class="instrument-label">AIRSPEED</div>
+                    <div class="instrument-value">250</div>
+                </div>
+                <div id="altitude" class="instrument">
+                    <div class="instrument-label">ALTITUDE</div>
+                    <div class="instrument-value">10000</div>
+                </div>
+                <div id="heading" class="instrument">
+                    <div class="instrument-label">HEADING</div>
+                    <div class="instrument-value">360</div>
+                </div>
+                <div id="vertical-speed" class="instrument">
+                    <div class="instrument-label">V/S</div>
+                    <div class="instrument-value">+500</div>
+                </div>
+            </div>
+            <div id="traffic-display"></div>
+        </div>
+        <div class="panels">
+            <div class="panel">
+                <h3>Flight Controls</h3>
+                <button onclick="changeAltitude(1000)">Climb 1000ft</button>
+                <button onclick="changeAltitude(-1000)">Descend 1000ft</button>
+                <button onclick="changeHeading(10)">Turn Right 10°</button>
+                <button onclick="changeHeading(-10)">Turn Left 10°</button>
+                <button onclick="changeSpeed(10)">Increase Speed</button>
+                <button onclick="changeSpeed(-10)">Decrease Speed</button>
+            </div>
+            <div class="panel">
+                <h3>Air Traffic Simulation</h3>
+                <button onclick="generateEnhancedTraffic()">Generate Traffic</button>
+                <button onclick="toggleADSB()">Toggle ADS-B</button>
+                <button onclick="stopTraffic()">Stop Traffic</button>
+            </div>
+            <div class="panel">
+                <h3>Communication Systems</h3>
+                <button onclick="simulateACARSMessage()">ACARS Message</button>
+                <button onclick="simulateCPDLCMessage()">CPDLC Message</button>
+                <button onclick="simulateVHFRadio()">VHF Radio</button>
+            </div>
+            <div class="panel">
+                <h3>Network Analysis</h3>
+                <button onclick="startPacketCapture()">Start Capture</button>
+                <button onclick="analyzeTraffic()">Analyze Traffic</button>
+                <button onclick="toggleFlightdeckNetworkTap()">Flightdeck Network Tap</button>
+            </div>
+            <div class="panel">
+                <h3>Vulnerability Testing</h3>
+                <button onclick="spoofGPSSignal()">Spoof GPS</button>
+                <button onclick="simulateDDoS()">Simulate DDoS</button>
+                <button onclick="injectVulnerability()">Inject Vulnerability</button>
+                <button onclick="performAdvancedVulnerabilityTest()">Advanced Test</button>
+            </div>
+            <div class="panel">
+                <h3>Weather Simulation</h3>
+                <button onclick="setWeather('clear')">Clear</button>
+                <button onclick="setWeather('cloudy')">Cloudy</button>
+                <button onclick="setWeather('rain')">Rain</button>
+                <button onclick="setWeather('storm')">Thunderstorm</button>
+            </div>
+            <div id="network-traffic"></div>
+            <div id="ads-b-out">
+                <h4>ADS-B Out Messages</h4>
+            </div>
+            <div id="ads-b-in">
+                <h4>Decoded ADS-B In Messages</h4>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cockpitView = document.getElementById('cockpit-view');
+        const trafficDisplay = document.getElementById('traffic-display');
+        const networkTraffic = document.getElementById('network-traffic');
+        const adsbOutDisplay = document.getElementById('ads-b-out');
+        const adsbInDisplay = document.getElementById('ads-b-in');
+        const artificialHorizon = document.getElementById('artificial-horizon');
+        const weatherOverlay = document.getElementById('weather-overlay');
+        let adsbEnabled = true;
+        let packetCaptureActive = false;
+        let flightdeckNetworkTapActive = false;
+        let trafficInterval;
+
+        // Flight parameters
+        let currentAltitude = 10000;
+        let currentHeading = 360;
+        let currentSpeed = 250;
+        let currentVerticalSpeed = 0;
+        let currentPitch = 0;
+        let currentRoll = 0;
+
+        // Connect to the Flightdeck Network WebSocket server
+        function connectToFlightdeckNetwork() {
+            const ws = new WebSocket('ws://localhost:8080');
+            
+            ws.onopen = () => {
+                console.log('Connected to Flightdeck Network');
+            };
+            
+            ws.onmessage = (event) => {
+                const trafficData = JSON.parse(event.data);
+                logMessage(`Flightdeck Network: ${trafficData.sourceSystem} ${trafficData.action} ${trafficData.dataType} to ${trafficData.destinationSystem}`);
+                // You can add more detailed logging or visualization here
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket Error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected from Flightdeck Network');
+            };
+        }
+
+        function updateInstruments() {
+            document.querySelector('#airspeed .instrument-value').textContent = currentSpeed;
+            document.querySelector('#altitude .instrument-value').textContent = currentAltitude;
+            document.querySelector('#heading .instrument-value').textContent = currentHeading;
+            document.querySelector('#vertical-speed .instrument-value').textContent = (currentVerticalSpeed >= 0 ? '+' : '') + currentVerticalSpeed;
+            
+            artificialHorizon.style.transform = `translate(-50%, -50%) rotate(${currentRoll}deg)`;
+            document.getElementById('horizon-line').style.top = `${50 + currentPitch * 2}%`;
+        }
+
+        function logMessage(message) {
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            networkTraffic.innerHTML += `[${timestamp}] ${message}<br>`;
+            networkTraffic.scrollTop = networkTraffic.scrollHeight;
+        }
+
+        function changeAltitude(delta) {
+            currentAltitude += delta;
+            currentVerticalSpeed = delta > 0 ? 1000 : -1000;
+            updateInstruments();
+            logMessage(`Altitude change initiated: ${delta > 0 ? 'Climbing' : 'Descending'} to ${currentAltitude}ft`);
+            setTimeout(() => { currentVerticalSpeed = 0; updateInstruments(); }, 2000);
+        }
+
+        function changeHeading(delta) {
+            currentHeading = (currentHeading + delta + 360) % 360;
+            currentRoll = delta > 0 ? 10 : -10;
+            updateInstruments();
+            logMessage(`Heading change: New heading ${currentHeading}°`);
+            setTimeout(() => { currentRoll = 0; updateInstruments(); }, 3000);
+        }
+
+        function changeSpeed(delta) {
+            currentSpeed += delta;
+            updateInstruments();
+            logMessage(`Speed change: New speed ${currentSpeed} knots`);
+        }
+
+        function setWeather(condition) {
+            switch(condition) {
+                case 'clear':
+                    weatherOverlay.style.background = 'none';
+                    break;
+                case 'cloudy':
+                    weatherOverlay.style.background = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%25\' height=\'100%25\'%3E%3Cdefs%3E%3Cpattern id=\'cloud\' patternUnits=\'userSpaceOnUse\' width=\'100\' height=\'100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'30\' fill=\'%23ffffff33\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23cloud)\'/%3E%3C/svg%3E")';
+                    break;
+                case 'rain':
+                    weatherOverlay.style.background = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%25\' height=\'100%25\'%3E%3Cdefs%3E%3Cpattern id=\'rain\' patternUnits=\'userSpaceOnUse\' width=\'10\' height=\'10\'%3E%3Cline x1=\'0\' y1=\'0\' x2=\'10\' y2=\'10\' stroke=\'%234fc3f733\' stroke-width=\'1\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23rain)\'/%3E%3C/svg%3E")';
+                    break;
+                case 'storm':
+                    weatherOverlay.style.background = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100%25\' height=\'100%25\'%3E%3Cdefs%3E%3Cpattern id=\'storm\' patternUnits=\'userSpaceOnUse\' width=\'100\' height=\'100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%2300000066\'/%3E%3Cpath d=\'M30 50 L70 50 L50 80 Z\' fill=\'%23ffff0066\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'url(%23storm)\'/%3E%3C/svg%3E")';
+                    break;
+            }
+            logMessage(`Weather condition set to: ${condition}`);
+        }
+
+        function generateEnhancedTraffic() {
+            clearInterval(trafficInterval);
+            const aircraftTypes = ['B737', 'A320', 'B747F', 'C172', 'SR22', 'E175', 'A350', 'B787'];
+            const flightPhases = ['Departure', 'En-route', 'Approach', 'Landing'];
+
+            trafficInterval = setInterval(() => {
+                const aircraft = document.createElement('div');
+                aircraft.classList.add('aircraft');
+                const x = Math.random() * trafficDisplay.offsetWidth;
+                const y = Math.random() * trafficDisplay.offsetHeight;
+                aircraft.style.left = `${x}px`;
+                aircraft.style.top = `${y}px`;
+
+                trafficDisplay.appendChild(aircraft);
+
+                const aircraftType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+                const flightPhase = flightPhases[Math.floor(Math.random() * flightPhases.length)];
+                logMessage(`Detected aircraft: ${aircraftType} in ${flightPhase} phase at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+
+                setTimeout(() => {
+                    trafficDisplay.removeChild(aircraft);
+                }, 5000);
+            }, 1000);
+        }
+
+        function stopTraffic() {
+            clearInterval(trafficInterval);
+            trafficDisplay.innerHTML = '';
+            logMessage('Traffic simulation stopped.');
+        }
+
+        function toggleADSB() {
+            adsbEnabled = !adsbEnabled;
+            logMessage(`ADS-B ${adsbEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function simulateACARSMessage() {
+            logMessage('ACARS message sent: "Flight WX456 ready for departure clearance."');
+        }
+
+        function simulateCPDLCMessage() {
+            logMessage('CPDLC message sent: "Request level change to FL390."');
+        }
+
+        function simulateVHFRadio() {
+            logMessage('VHF Radio communication: "Tower, this is WX456, ready for takeoff."');
+        }
+
+        function startPacketCapture() {
+            if (!packetCaptureActive) {
+                packetCaptureActive = true;
+                logMessage('Packet capture started.');
+            } else {
+                logMessage('Packet capture already active.');
+            }
+        }
+
+        function analyzeTraffic() {
+            if (packetCaptureActive) {
+                logMessage('Analyzing captured network traffic...');
+                setTimeout(() => {
+                    logMessage('Traffic analysis complete: No anomalies detected.');
+                }, 3000);
+            } else {
+                logMessage('No packet capture active. Start a capture first.');
+            }
+        }
+
+        function toggleFlightdeckNetworkTap() {
+            flightdeckNetworkTapActive = !flightdeckNetworkTapActive;
+            logMessage(`Flightdeck Network Tap ${flightdeckNetworkTapActive ? 'activated' : 'deactivated'}`);
+        }
+
+        function spoofGPSSignal() {
+            logMessage('GPS signal spoofed. Aircraft location altered.');
+        }
+
+        function simulateDDoS() {
+            logMessage('DDoS simulation started on aircraft communication systems.');
+        }
+
+        function injectVulnerability() {
+            logMessage('Vulnerability injected into flight management system.');
+        }
+
+        function performAdvancedVulnerabilityTest() {
+            logMessage('Performing advanced vulnerability test...');
+            setTimeout(() => {
+                logMessage('Advanced test complete: No critical vulnerabilities found.');
+            }, 5000);
+        }
+
+        // Initial instrument update
+        updateInstruments();
+
+        // Connect to the network on page load
+        connectToFlightdeckNetwork();
+    </script>
+</body>
+</html>

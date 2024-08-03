@@ -1,0 +1,455 @@
+<html><head><base href="https://websim.ai/aviation/advanced-flight-deck-simulator/"><title>WebSim.ai Advanced Flight Deck Simulator</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    height: 100%;
+    overflow: hidden;
+  }
+  .container {
+    display: flex;
+    height: 100vh;
+  }
+  .cockpit {
+    flex: 3;
+    background-color: #2a2a2a;
+    position: relative;
+    overflow: hidden;
+  }
+  .panels {
+    flex: 1;
+    background-color: #333;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .panel {
+    background-color: #444;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .panel h3 {
+    margin-top: 0;
+    color: #00bcd4;
+  }
+  button {
+    background-color: #00796b;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin: 2px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #00a86b;
+  }
+  #cockpit-view {
+    width: 100%;
+    height: 60%;
+    background-color: #001f3f;
+    position: relative;
+  }
+  #traffic-display {
+    width: 100%;
+    height: 40%;
+    background-color: #003366;
+    position: relative;
+  }
+  .aircraft {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background-color: #ffeb3b;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  #network-traffic {
+    height: 150px;
+    overflow-y: scroll;
+    font-family: monospace;
+    font-size: 12px;
+    background-color: #000;
+    color: #00ff00;
+    padding: 10px;
+    margin-top: 10px;
+  }
+  .instrument {
+    position: absolute;
+    background-color: #222;
+    border-radius: 50%;
+    border: 2px solid #444;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Digital-7', monospace;
+    color: #00ff00;
+  }
+  .instrument-label {
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+  .instrument-value {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  #airspeed {
+    width: 100px;
+    height: 100px;
+    top: 20px;
+    left: 20px;
+  }
+  #altitude {
+    width: 100px;
+    height: 100px;
+    top: 20px;
+    right: 20px;
+  }
+  #heading {
+    width: 100px;
+    height: 100px;
+    bottom: 20px;
+    left: 20px;
+  }
+  #vertical-speed {
+    width: 100px;
+    height: 100px;
+    bottom: 20px;
+    right: 20px;
+  }
+  #wireshark-instructions {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  #ads-b-out, #ads-b-in {
+    background-color: #34495e;
+    color: #ecf0f1;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    font-size: 12px;
+    height: 100px;
+    overflow-y: auto;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="cockpit">
+      <div id="cockpit-view">
+        <!-- 3D cockpit view will be rendered here -->
+      </div>
+      <div id="traffic-display">
+        <!-- ADS-B traffic will be displayed here -->
+      </div>
+    </div>
+    <div class="panels">
+      <div class="panel">
+        <h3>Air Traffic Simulation</h3>
+        <button onclick="generateEnhancedTraffic()">Generate Enhanced Traffic</button>
+        <button onclick="toggleADSB()">Toggle ADS-B</button>
+        <button onclick="stopTraffic()">Stop Traffic</button>
+      </div>
+      <div class="panel">
+        <h3>Communication Systems</h3>
+        <button onclick="simulateACARSMessage()">ACARS Message</button>
+        <button onclick="simulateCPDLCMessage()">CPDLC Message</button>
+        <button onclick="simulateVHFRadio()">VHF Radio</button>
+      </div>
+      <div class="panel">
+        <h3>Network Analysis</h3>
+        <button onclick="startPacketCapture()">Start Capture</button>
+        <button onclick="analyzeTraffic()">Analyze Traffic</button>
+        <button onclick="toggleFlightdeckNetworkTap()">Toggle Flightdeck Network Tap</button>
+      </div>
+      <div class="panel">
+        <h3>Vulnerability Testing</h3>
+        <button onclick="spoofGPSSignal()">Spoof GPS</button>
+        <button onclick="simulateDDoS()">Simulate DDoS</button>
+        <button onclick="injectVulnerability()">Inject Vulnerability</button>
+        <button onclick="performAdvancedVulnerabilityTest()">Advanced Vulnerability Test</button>
+      </div>
+      <div id="network-traffic"></div>
+      <div id="ads-b-out">
+        <h4>ADS-B Out Messages</h4>
+        <!-- Live ADS-B Out messages will be displayed here -->
+      </div>
+      <div id="ads-b-in">
+        <h4>Decoded ADS-B In Messages</h4>
+        <!-- Decoded ADS-B In messages will be displayed here -->
+      </div>
+      <div id="wireshark-instructions">
+        <h4>Wireshark Monitoring Instructions</h4>
+        <ol>
+          <li>Install Wireshark on your local machine.</li>
+          <li>Start Wireshark and select the network interface connected to the flight deck simulator.</li>
+          <li>Apply a display filter: <code>tcp.port == 1090 || udp.port == 1090</code> to focus on ADS-B traffic.</li>
+          <li>Look for packets with the protocol "ADS-B" in the protocol column.</li>
+          <li>Analyze the packet details for aircraft position, velocity, and identification data.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  const cockpitView = document.getElementById('cockpit-view');
+  const trafficDisplay = document.getElementById('traffic-display');
+  const networkTraffic = document.getElementById('network-traffic');
+  const adsbOutDisplay = document.getElementById('ads-b-out');
+  const adsbInDisplay = document.getElementById('ads-b-in');
+  let adsbEnabled = true;
+  let packetCaptureActive = false;
+  let flightdeckNetworkTapActive = false;
+  let trafficInterval;
+
+  // Initialize 3D cockpit view
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, cockpitView.clientWidth / cockpitView.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(cockpitView.clientWidth, cockpitView.clientHeight);
+  cockpitView.appendChild(renderer.domElement);
+
+  // Create basic cockpit geometry
+  const geometry = new THREE.BoxGeometry(2, 1, 2);
+  const material = new THREE.MeshBasicMaterial({ color: 0x404040, wireframe: true });
+  const cockpit = new THREE.Mesh(geometry, material);
+  scene.add(cockpit);
+
+  camera.position.z = 1.5;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    cockpit.rotation.x += 0.001;
+    cockpit.rotation.y += 0.001;
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  function generateEnhancedTraffic() {
+    clearInterval(trafficInterval);
+    const aircraftTypes = ['B737', 'A320', 'B747F', 'C172', 'SR22', 'E175', 'A350', 'B787'];
+    const flightPhases = ['Departure', 'En-route', 'Approach', 'Landing'];
+    
+    trafficDisplay.innerHTML = '';
+    for (let i = 0; i < 30; i++) {
+      const aircraft = document.createElement('div');
+      aircraft.className = 'aircraft';
+      aircraft.style.left = `${Math.random() * 100}%`;
+      aircraft.style.top = `${Math.random() * 100}%`;
+      
+      const type = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
+      const phase = flightPhases[Math.floor(Math.random() * flightPhases.length)];
+      const flightNumber = `${['AA', 'DL', 'UA', 'LH', 'BA'][Math.floor(Math.random() * 5)]}${Math.floor(Math.random() * 1000 + 1000)}`;
+      
+      aircraft.title = `${type} - ${flightNumber} - ${phase}`;
+      aircraft.style.backgroundColor = phase === 'Departure' ? '#ff0000' : 
+                                       phase === 'En-route' ? '#00ff00' :
+                                       phase === 'Approach' ? '#ffff00' : '#0000ff';
+      
+      trafficDisplay.appendChild(aircraft);
+    }
+    logMessage('Enhanced traffic simulation: 30 aircraft with varied types, flight numbers, and phases');
+    
+    trafficInterval = setInterval(() => {
+      document.querySelectorAll('.aircraft').forEach(aircraft => {
+        aircraft.style.left = `${(parseFloat(aircraft.style.left) + (Math.random() - 0.5) * 2) % 100}%`;
+        aircraft.style.top = `${(parseFloat(aircraft.style.top) + (Math.random() - 0.5) * 2) % 100}%`;
+        simulateADSBMessage(aircraft.title);
+      });
+    }, 1000);
+  }
+
+  function stopTraffic() {
+    clearInterval(trafficInterval);
+    trafficDisplay.innerHTML = '';
+    logMessage('All traffic stopped');
+  }
+
+  function toggleADSB() {
+    adsbEnabled = !adsbEnabled;
+    logMessage(`ADS-B ${adsbEnabled ? 'enabled' : 'disabled'}`);
+    trafficDisplay.style.opacity = adsbEnabled ? '1' : '0.2';
+  }
+
+  function simulateADSBMessage(aircraftInfo) {
+    if (adsbEnabled) {
+      const [type, flightNumber, phase] = aircraftInfo.split(' - ');
+      const lat = (Math.random() * 180 - 90).toFixed(6);
+      const lon = (Math.random() * 360 - 180).toFixed(6);
+      const alt = Math.floor(Math.random() * 40000 + 1000);
+      const speed = Math.floor(Math.random() * 500 + 100);
+      
+      const adsbOutMessage = `ADS-B Out: ${flightNumber} (${type}) - Lat: ${lat}, Lon: ${lon}, Alt: ${alt}ft, Speed: ${speed}kts`;
+      addMessageToDisplay(adsbOutDisplay, adsbOutMessage);
+      
+      const adsbInMessage = `Decoded ADS-B In: Aircraft ${flightNumber} at position ${lat},${lon}, altitude ${alt}ft, ground speed ${speed}kts`;
+      addMessageToDisplay(adsbInDisplay, adsbInMessage);
+    }
+  }
+
+  function addMessageToDisplay(display, message) {
+    const messageElement = document.createElement('div');
+    messageElement.textContent = message;
+    display.appendChild(messageElement);
+    display.scrollTop = display.scrollHeight;
+    
+    if (display.childElementCount > 10) {
+      display.removeChild(display.firstChild);
+    }
+  }
+
+  function simulateACARSMessage() {
+    logMessage('Sending ACARS message: "REQUEST LATEST KJFK WEATHER"');
+    setTimeout(() => {
+      logMessage('Received ACARS response: "KJFK 231453Z 18005KT 10SM FEW035 23/18 A3001"');
+    }, 2000);
+  }
+
+  function simulateCPDLCMessage() {
+    logMessage('Sending CPDLC message: "REQUEST CLIMB FL350"');
+    setTimeout(() => {
+      logMessage('Received CPDLC response: "CLIMB TO FL350 APPROVED"');
+    }, 1500);
+  }
+
+  function simulateVHFRadio() {
+    logMessage('VHF transmission: "New York Center, Delta 1234 with you, FL330"');
+    setTimeout(() => {
+      logMessage('ATC response: "Delta 1234, New York Center, radar contact, maintain FL330"');
+    }, 2000);
+  }
+
+  function startPacketCapture() {
+    packetCaptureActive = !packetCaptureActive;
+    if (packetCaptureActive) {
+      logMessage('Started packet capture');
+      simulatePacketCapture();
+    } else {
+      logMessage('Stopped packet capture');
+    }
+  }
+
+  function simulatePacketCapture() {
+    if (packetCaptureActive) {
+      const protocols = ['TCP', 'UDP', 'ADS-B', 'ACARS', 'CPDLC'];
+      const protocol = protocols[Math.floor(Math.random() * protocols.length)];
+      const source = `192.168.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+      const destination = `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+      const packetSize = Math.floor(Math.random() * 1000 + 64);
+      
+      logMessage(`Captured: ${protocol} packet from ${source} to ${destination}, size: ${packetSize} bytes`);
+      setTimeout(simulatePacketCapture, 500);
+    }
+  }
+
+  function analyzeTraffic() {
+    logMessage('Analyzing captured traffic...');
+    setTimeout(() => {
+      logMessage('Analysis complete. Found:');
+      logMessage('- 152 ADS-B position reports');
+      logMessage('- 28 ACARS messages');
+      logMessage('- 15 CPDLC exchanges');
+      logMessage('- 5 potential anomalies detected');
+    }, 3000);
+  }
+
+  function toggleFlightdeckNetworkTap() {
+    flightdeckNetworkTapActive = !flightdeckNetworkTapActive;
+    logMessage(`Flightdeck Network Tap ${flightdeckNetworkTapActive ? 'activated' : 'deactivated'}`);
+    if (flightdeckNetworkTapActive) {
+      simulateFlightdeckNetworkTraffic();
+    }
+  }
+
+  function simulateFlightdeckNetworkTraffic() {
+    if (flightdeckNetworkTapActive) {
+      const systems = ['FMS', 'EFIS', 'EICAS', 'TCAS', 'Weather Radar'];
+      const system = systems[Math.floor(Math.random() * systems.length)];
+      const action = ['data update', 'status request', 'configuration change', 'alert', 'diagnostic'];
+      const actionType = action[Math.floor(Math.random() * action.length)];
+      
+      logMessage(`Flightdeck Network: ${system} - ${actionType}`);
+      setTimeout(simulateFlightdeckNetworkTraffic, 800);
+    }
+  }
+
+  function spoofGPSSignal() {
+    logMessage('Initiating GPS spoofing...');
+    setTimeout(() => {
+      logMessage('GPS signal spoofed. False position: 51.4709° N, 0.4567° W');
+      logMessage('Warning: Position discrepancy detected!');
+    }, 2000);
+  }
+
+  function simulateDDoS() {
+    logMessage('Simulating DDoS attack on communication channels...');
+    let count = 0;
+    const ddosInterval = setInterval(() => {
+      logMessage(`DDoS packet flood: ${++count * 1000} packets sent`);
+      if (count >= 5) {
+        clearInterval(ddosInterval);
+        logMessage('DDoS attack simulation complete. Communication degraded.');
+      }
+    }, 1000);
+  }
+
+  function injectVulnerability() {
+    logMessage('Injecting known vulnerability: CVE-2023-67890');
+    setTimeout(() => {
+      logMessage('Vulnerability exploited. Unauthorized access to ACARS system detected.');
+    }, 2500);
+  }
+
+  function performAdvancedVulnerabilityTest() {
+    logMessage('Initiating advanced vulnerability test...');
+    const vulnerabilities = [
+      'ADS-B signal injection',
+      'ACARS message spoofing',
+      'GPS signal jamming',
+      'VHF communication interception',
+      'EFB software exploit'
+    ];
+
+    let testIndex = 0;
+    const testInterval = setInterval(() => {
+      if (testIndex < vulnerabilities.length) {
+        logMessage(`Testing: ${vulnerabilities[testIndex]}`);
+        testIndex++;
+      } else {
+        clearInterval(testInterval);
+        logMessage('Advanced vulnerability test complete. Generating report...');
+        setTimeout(() => {
+          logMessage('Vulnerability Report:');
+          logMessage('- 2 high-risk vulnerabilities detected');
+          logMessage('- 3 medium-risk vulnerabilities identified');
+          logMessage('- Recommended actions: Patch ACARS system, upgrade GPS anti-spoofing measures');
+        }, 2000);
+      }
+    }, 1500);
+  }
+
+  function logMessage(message) {
+    const log = document.createElement('div');
+    log.textContent = `[${new Date().toISOString().slice(11, 19)}] ${message}`;
+    networkTraffic.appendChild(log);
+    networkTraffic.scrollTop = networkTraffic.scrollHeight;
+  }
+
+  // Initialize
+  generateEnhancedTraffic();
+  logMessage('Advanced Flight Deck Simulator initialized with enhanced traffic and network monitoring features.');
+</script>
+</body>
+</html>
