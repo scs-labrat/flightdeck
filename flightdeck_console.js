@@ -244,7 +244,7 @@ function updateWeatherRadarTable(data) {
   screen.render();
 }
 
-function updateADS-BTable(data) {
+function updateADSBTable(data) {
   adsbTable.setData({
     headers: ['ICAO', 'Position', 'Altitude', 'Speed'],
     data: data.traffic.map(ac => [
