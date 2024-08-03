@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+message AircraftData {
+  string system = 1;
+  oneof payload {
+    FMSData fms = 2;
+    EFISData efis = 3;
+    EICASData eicas = 4;
+    TCASData tcas = 5;
+    WeatherRadarData weather_radar = 6;
+    ADSBData adsb = 7;
+    EGPWSData egpws = 8;
+  }
+}
+
+message FMSData {
+  string origin = 1;
+  string destination = 2;
+  repeated string waypoints = 3;
+  int32 estimated_fuel_remaining = 4;
+}
+
+message EFISData {
+  float pitch = 1;
+  float roll = 2;
+  int32 altitude = 3;
+  int32 airspeed = 4;
+}
+
+message EICASData {
+  int32 n1 = 1;
+  int32 egt = 2;
+  int32 fuel_flow = 3;
+  int32 hydraulic_pressure = 4;
+}
+
+message TCASData {
+  message Aircraft {
+    string callsign = 1;
+    int32 relative_altitude = 2;
+    int32 range = 3;
+  }
+  repeated Aircraft nearby_aircraft = 1;
+}
+
+message WeatherRadarData {
+  message WeatherCell {
+    string intensity = 1;
+    int32 bearing = 2;
+    int32 distance = 3;
+  }
+  repeated WeatherCell weather_cells = 1;
+}
+
+message ADSBData {
+  message Traffic {
+    string icao = 1;
+    double latitude = 2;
+    double longitude = 3;
+    int32 altitude = 4;
+    int32 speed = 5;
+  }
+  repeated Traffic traffic = 1;
+}
+
+message EGPWSData {
+  bool terrain_ahead = 1;
+  int32 minimum_terrain_clearance = 2;
+  repeated string warnings = 3;
+}
