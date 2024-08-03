@@ -1,9 +1,9 @@
-// Flightdeck Console Simulation with Protocol Buffers
+// Flightdeck Console Simulation with Optimized WebSocket Throughput
 
 const WebSocket = require('ws');
 const blessed = require('blessed');
 const contrib = require('blessed-contrib');
-const protobuf = require('./flightdeck_pb.js'); // Load the generated protobuf classes
+const zlib = require('zlib');
 
 // ANSI escape codes for colors
 const colors = {
@@ -143,14 +143,20 @@ Object.entries(systems).forEach(([system, port]) => {
     console.log(`${colors.fg.green}Connected to ${system} on port ${port}${colors.reset}`);
   });
   
-  connections[system].on('message', (data) => {
-    try {
-      const aircraftData = protobuf.AircraftData.decode(data);
-      console.log(`Received data for ${system}:`, aircraftData); // Log incoming data
-      handleSystemData(system, aircraftData);
-    } catch (error) {
-      console.error('Failed to parse incoming data:', error);
-    }
+  connections[system].on('message', (compressedData) => {
+    zlib.inflate(compressedData, (err, rawData) => {
+      if (err) {
+        console.error('Failed to decompress incoming data:', err);
+        return;
+      }
+      try {
+        const data = JSON.parse(rawData.toString());
+        console.log(`Received data for ${system}:`, data); // Log incoming data
+        handleSystemData(system, data);
+      } catch (parseError) {
+        console.error('Failed to parse incoming data:', parseError);
+      }
+    });
   });
   
   connections[system].on('error', (error) => {
@@ -190,28 +196,28 @@ const handleSystemData = throttle((system, data) => {
   }
   switch (system) {
     case 'FMS':
-      updateFMSTable(data.fms);
-      updateFuelChart(data.fms.estimated_fuel_remaining);
+      updateFMSTable(data.data);
+      updateFuelChart(data.data.estimatedFuelRemaining);
       break;
     case 'EFIS':
-      updateEFISTable(data.efis);
-      updateAltitudeChart(data.efis.altitude);
-      updateSpeedChart(data.efis.airspeed);
+      updateEFISTable(data.data);
+      updateAltitudeChart(data.data.altimeter);
+      updateSpeedChart(data.data.airspeed);
       break;
     case 'EICAS':
-      updateEICASTable(data.eicas);
+      updateEICASTable(data.data);
       break;
     case 'TCAS':
-      updateTCASTable(data.tcas);
+      updateTCASTable(data.data);
       break;
     case 'Weather Radar':
-      updateWeatherRadarTable(data.weather_radar);
+      updateWeatherRadarTable(data.data);
       break;
     case 'ADS-B':  // Correct function call
-      updateADSBTable(data.adsb); // Corrected function call
+      updateADSBTable(data.data); // Corrected function call
       break;
     case 'EGPWS':
-      updateEGPWSTable(data.egpws);
+      updateEGPWSTable(data.data);
       break;
     default:
       console.log(`${colors.fg.yellow}${system} data:${colors.reset}`, data);
@@ -219,7 +225,7 @@ const handleSystemData = throttle((system, data) => {
 }, 500); // Throttle updates to every 500 ms
 
 function updateFMSTable(data) {
-  if (!data) {
+  if (!data || !data.flightPlan) {
     console.error('Invalid FMS data');
     return;
   }
@@ -227,16 +233,16 @@ function updateFMSTable(data) {
   fmsTable.setData({
     headers: ['Key', 'Value'],
     data: [
-      ['Flight Plan', `${data.origin || 'N/A'} → ${data.destination || 'N/A'}`],
-      ['Waypoints', Array.isArray(data.waypoints) ? data.waypoints.join(' → ') : 'N/A'],
-      ['Fuel Remaining', `${data.estimated_fuel_remaining || 0} kg`]
+      ['Flight Plan', `${data.flightPlan.origin || 'N/A'} → ${data.flightPlan.destination || 'N/A'}`],
+      ['Waypoints', Array.isArray(data.flightPlan.waypoints) ? data.flightPlan.waypoints.join(' → ') : 'N/A'],
+      ['Fuel Remaining', `${data.estimatedFuelRemaining || 0} kg`]
     ]
   });
   screen.render();
 }
 
 function updateEFISTable(data) {
-  if (!data) {
+  if (!data || !data.attitudeIndicator || !data.altimeter || !data.airspeed) {
     console.error('Invalid EFIS data');
     return;
   }
@@ -244,8 +250,8 @@ function updateEFISTable(data) {
   efisTable.setData({
     headers: ['Key', 'Pitch', 'Roll'],
     data: [
-      ['Attitude', `${(data.pitch || 0).toFixed(1)}°`, `${(data.roll || 0).toFixed(1)}°`],
-      ['Altitude', `${data.altitude || 0} ft`, ''],
+      ['Attitude', `${(data.attitudeIndicator.pitch || 0).toFixed(1)}°`, `${(data.attitudeIndicator.roll || 0).toFixed(1)}°`],
+      ['Altitude', `${data.altimeter || 0} ft`, ''],
       ['Airspeed', `${data.airspeed || 0} knots`, '']
     ]
   });
@@ -253,7 +259,7 @@ function updateEFISTable(data) {
 }
 
 function updateEICASTable(data) {
-  if (!data) {
+  if (!data || !data.engineParameters || !data.hydraulicPressure) {
     console.error('Invalid EICAS data');
     return;
   }
@@ -261,26 +267,26 @@ function updateEICASTable(data) {
   eicasTable.setData({
     headers: ['Key', 'Value', 'Unit'],
     data: [
-      ['N1', `${data.n1 || 0}%`, ''],
-      ['EGT', `${data.egt || 0}°C`, ''],
-      ['Fuel Flow', `${data.fuel_flow || 0} kg/h`, ''],
-      ['Hydraulic Pressure', `${data.hydraulic_pressure || 0} psi`, '']
+      ['N1', `${data.engineParameters.n1 || 0}%`, ''],
+      ['EGT', `${data.engineParameters.egt || 0}°C`, ''],
+      ['Fuel Flow', `${data.engineParameters.fuelFlow || 0} kg/h`, ''],
+      ['Hydraulic Pressure', `${data.hydraulicPressure || 0} psi`, '']
     ]
   });
   screen.render();
 }
 
 function updateTCASTable(data) {
-  if (!data || !Array.isArray(data.nearby_aircraft)) {
+  if (!data || !Array.isArray(data.nearbyAircraft)) {
     console.error('Invalid TCAS data');
     return;
   }
 
   tcasTable.setData({
     headers: ['Callsign', 'Relative Altitude', 'Range (nm)'],
-    data: data.nearby_aircraft.map(ac => [
+    data: data.nearbyAircraft.map(ac => [
       ac.callsign || 'N/A',
-      `${ac.relative_altitude || 0} ft`,
+      `${ac.relativeAltitude || 0} ft`,
       ac.range || 'N/A'
     ])
   });
@@ -288,14 +294,14 @@ function updateTCASTable(data) {
 }
 
 function updateWeatherRadarTable(data) {
-  if (!data || !Array.isArray(data.weather_cells)) {
+  if (!data || !Array.isArray(data.weatherCells)) {
     console.error('Invalid Weather Radar data');
     return;
   }
 
   weatherRadarTable.setData({
     headers: ['Intensity', 'Bearing', 'Distance (nm)'],
-    data: data.weather_cells.map(cell => [
+    data: data.weatherCells.map(cell => [
       cell.intensity || 'N/A',
       `${cell.bearing || 0}°`,
       cell.distance || 'N/A'
@@ -314,7 +320,7 @@ function updateADSBTable(data) {  // Corrected function name
     headers: ['ICAO', 'Position', 'Altitude', 'Speed'],
     data: data.traffic.map(ac => [
       ac.icao || 'N/A',
-      `${(ac.latitude || 0).toFixed(4)}°, ${(ac.longitude || 0).toFixed(4)}°`,
+      `${(ac.position?.latitude || 0).toFixed(4)}°, ${(ac.position?.longitude || 0).toFixed(4)}°`,
       `${ac.altitude || 0} ft`,
       `${ac.speed || 0} knots`
     ])
@@ -323,7 +329,7 @@ function updateADSBTable(data) {  // Corrected function name
 }
 
 function updateEGPWSTable(data) {
-  if (!data) {
+  if (!data || !('terrainAhead' in data) || !('minimumTerrainClearance' in data) || !Array.isArray(data.warnings)) {
     console.error('Invalid EGPWS data');
     return;
   }
@@ -331,8 +337,8 @@ function updateEGPWSTable(data) {
   egpwsTable.setData({
     headers: ['Key', 'Value'],
     data: [
-      ['Terrain Ahead', data.terrain_ahead ? 'WARNING' : 'Clear'],
-      ['Min Terrain Clearance', `${data.minimum_terrain_clearance || 0} ft`],
+      ['Terrain Ahead', data.terrainAhead ? 'WARNING' : 'Clear'],
+      ['Min Terrain Clearance', `${data.minimumTerrainClearance || 0} ft`],
       ['Warnings', data.warnings.length > 0 ? data.warnings.join(', ') : 'None']
     ]
   });
