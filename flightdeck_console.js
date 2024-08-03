@@ -172,8 +172,8 @@ function handleSystemData(system, data) {
     case 'Weather Radar':
       updateWeatherRadarTable(data.data);
       break;
-    case 'ADS-B':
-      updateADS-BTable(data.data);
+    case 'ADS-B':  // Correct function call
+      updateADSBTable(data.data); // Corrected function call
       break;
     case 'EGPWS':
       updateEGPWSTable(data.data);
@@ -244,7 +244,7 @@ function updateWeatherRadarTable(data) {
   screen.render();
 }
 
-function updateADSBTable(data) {
+function updateADSBTable(data) {  // Corrected function name
   adsbTable.setData({
     headers: ['ICAO', 'Position', 'Altitude', 'Speed'],
     data: data.traffic.map(ac => [
